@@ -1,4 +1,4 @@
-"""ComfyUI custom nodes for AetherStream zero-VRAM diffusion streaming."""
+"""ComfyUI custom nodes for PhobosStream zero-VRAM diffusion streaming."""
 
 from pathlib import Path
 from typing import Any, Dict, Tuple
@@ -12,19 +12,19 @@ except ImportError:
     torch = None
 
 try:
-    from aether_stream.pipeline.stream_engine import AetherStreamEngine
-    from aether_stream.storage.layout import ModelShardsManifest
-    from aether_stream.types import BackendType, GenerationConfig
+    from phobos_stream.pipeline.stream_engine import PhobosStreamEngine
+    from phobos_stream.storage.layout import ModelShardsManifest
+    from phobos_stream.types import BackendType, GenerationConfig
 except ImportError:
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-    from aether_stream.pipeline.stream_engine import AetherStreamEngine
-    from aether_stream.storage.layout import ModelShardsManifest
-    from aether_stream.types import BackendType, GenerationConfig
+    from phobos_stream.pipeline.stream_engine import PhobosStreamEngine
+    from phobos_stream.storage.layout import ModelShardsManifest
+    from phobos_stream.types import BackendType, GenerationConfig
 
 
-class AetherStreamLoaderNode:
-    """ComfyUI Node: Loads and initializes zero-VRAM AetherStream engine."""
+class PhobosStreamLoaderNode:
+    """ComfyUI Node: Loads and initializes zero-VRAM PhobosStream engine."""
 
     @classmethod
     def INPUT_TYPES(cls) -> Dict[str, Any]:
@@ -41,10 +41,10 @@ class AetherStreamLoaderNode:
             },
         }
 
-    RETURN_TYPES = ("AETHER_MODEL",)
+    RETURN_TYPES = ("PHOBOS_MODEL",)
     RETURN_NAMES = ("aether_model",)
     FUNCTION = "load_model"
-    CATEGORY = "AetherStream"
+    CATEGORY = "PhobosStream"
 
     def load_model(
         self,
@@ -65,18 +65,18 @@ class AetherStreamLoaderNode:
                 hidden_size=hidden_size,
             )
 
-        engine = AetherStreamEngine(manifest=manifest, backend_type=BackendType(backend))
+        engine = PhobosStreamEngine(manifest=manifest, backend_type=BackendType(backend))
         return ({"engine": engine, "manifest": manifest},)
 
 
-class AetherStreamSamplerNode:
+class PhobosStreamSamplerNode:
     """ComfyUI Node: Executes zero-VRAM diffusion denoising loop."""
 
     @classmethod
     def INPUT_TYPES(cls) -> Dict[str, Any]:
         return {
             "required": {
-                "aether_model": ("AETHER_MODEL",),
+                "aether_model": ("PHOBOS_MODEL",),
                 "prompt": ("STRING", {
                     "multiline": True,
                     "default": "Cinematic drone shot of an ancient mountain temple in morning mist, 8k photorealistic",
@@ -91,10 +91,10 @@ class AetherStreamSamplerNode:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "AETHER_LATENT")
+    RETURN_TYPES = ("IMAGE", "PHOBOS_LATENT")
     RETURN_NAMES = ("images", "latents")
     FUNCTION = "sample"
-    CATEGORY = "AetherStream"
+    CATEGORY = "PhobosStream"
 
     def sample(
         self,
@@ -108,7 +108,7 @@ class AetherStreamSamplerNode:
         guidance_scale: float,
         seed: int,
     ) -> Tuple[Any, Dict[str, Any]]:
-        engine: AetherStreamEngine = aether_model["engine"]
+        engine: PhobosStreamEngine = aether_model["engine"]
         config = GenerationConfig(
             prompt=prompt,
             negative_prompt=negative_prompt,
@@ -145,22 +145,22 @@ class AetherStreamSamplerNode:
         return (image_out, latent_dict)
 
 
-class AetherStreamVAEDecodeNode:
-    """ComfyUI Node: Decodes AetherStream latents to images/video frames."""
+class PhobosStreamVAEDecodeNode:
+    """ComfyUI Node: Decodes PhobosStream latents to images/video frames."""
 
     @classmethod
     def INPUT_TYPES(cls) -> Dict[str, Any]:
         return {
             "required": {
-                "latents": ("AETHER_LATENT",),
-                "aether_model": ("AETHER_MODEL",),
+                "latents": ("PHOBOS_LATENT",),
+                "aether_model": ("PHOBOS_MODEL",),
             }
         }
 
     RETURN_TYPES = ("IMAGE",)
     RETURN_NAMES = ("images",)
     FUNCTION = "decode"
-    CATEGORY = "AetherStream"
+    CATEGORY = "PhobosStream"
 
     def decode(self, latents: Dict[str, Any], aether_model: Dict[str, Any]) -> Tuple[Any]:
         raw_samples = latents["samples"]
