@@ -12,6 +12,7 @@ jobs:
   publish-node:
     name: Publish Custom Node to Comfy Registry
     runs-on: ubuntu-latest
+    environment: REGISTRY_ACCESS_TOKEN
     steps:
       - name: Check out code
         uses: actions/checkout@v4
