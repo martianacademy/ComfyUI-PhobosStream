@@ -1,4 +1,4 @@
-# ComfyUI-PhobosStream 🌌
+# <img src="assets/icon.png" width="42" align="top" alt="PhobosStream Icon" /> ComfyUI-PhobosStream
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom%20Node-orange.svg)](https://github.com/comfyanonymous/ComfyUI)

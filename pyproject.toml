@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "comfyui-phobosstream"
-version = "0.2.0"
+version = "0.2.1"
 description = "Zero-VRAM Video & Image Diffusion Streaming & 3-Stage Offloading Extension for ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -25,4 +25,4 @@ packages = ["phobos_stream"]
 [tool.comfy]
 PublisherId = "martianacademy"
 DisplayName = "ComfyUI-PhobosStream"
-Icon = "🌌"
+Icon = "https://raw.githubusercontent.com/martianacademy/ComfyUI-PhobosStream/main/assets/icon.png"
