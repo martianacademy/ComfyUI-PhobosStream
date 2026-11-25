@@ -1,8 +1,9 @@
-# <img src="assets/icon.png" width="42" align="top" alt="PhobosStream Icon" /> ComfyUI-PhobosStream
+# <img src="https://raw.githubusercontent.com/martianacademy/ComfyUI-PhobosStream/main/assets/icon.png" width="42" align="top" alt="PhobosStream Icon" /> ComfyUI-PhobosStream
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom%20Node-orange.svg)](https://github.com/comfyanonymous/ComfyUI)
-[![Backends](https://img.shields.io/badge/Backends-CUDA%20•%20MPS%20•%20MLX%20•%20GGUF-purple.svg)]()
+[![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-v0.2.3-EE6A3E)](https://registry.comfy.org/publishers/martianacademy/nodes/comfyui-phobosstream)
+[![PyPI Core](https://img.shields.io/pypi/v/phobos-stream?color=EE6A3E&label=phobos-stream)](https://pypi.org/project/phobos-stream/)
+[![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom_Node-orange.svg)](https://github.com/comfyanonymous/ComfyUI)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/martianacademy/ComfyUI-PhobosStream/blob/main/LICENSE)
 
 **ComfyUI-PhobosStream** is a self-contained zero-VRAM stage-offloading and hook-based per-block streaming extension for ComfyUI. It enables consumer hardware — including **8GB/16GB/24GB Apple Silicon Macs** and **8GB/12GB NVIDIA/AMD GPUs** — to run massive 12B–14B+ image and video Diffusion Transformers without Out-Of-Memory (OOM) crashes.
 
@@ -32,12 +33,17 @@ Measured end-to-end on Apple Silicon Metal GPU in isolated subprocesses using `q
 
 ## 🚀 Installation
 
-### Option 1: Via ComfyUI Manager (Recommended)
+### Option 1: Via Comfy Registry CLI
+```bash
+comfy node install comfyui-phobosstream
+```
+
+### Option 2: Via ComfyUI Manager
 1. Open ComfyUI → **ComfyUI Manager** → **Install Custom Nodes**.
-2. Search for `ComfyUI-PhobosStream` and click **Install** (fully self-contained; only standard `numpy`, `safetensors`, `pydantic` required).
+2. Search for `ComfyUI-PhobosStream` and click **Install**.
 3. Restart ComfyUI.
 
-### Option 2: Git Clone
+### Option 3: Git Clone
 ```bash
 cd ComfyUI/custom_nodes/
 git clone https://github.com/martianacademy/ComfyUI-PhobosStream.git
@@ -65,4 +71,4 @@ pip install -r requirements.txt
 
 ## 📜 License
 
-MIT License — 100% Free & Open-Source.
+[MIT License](https://github.com/martianacademy/ComfyUI-PhobosStream/blob/main/LICENSE) — 100% Free & Open-Source.
