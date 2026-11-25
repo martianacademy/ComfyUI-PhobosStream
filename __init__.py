@@ -1,41 +1,26 @@
-"""ComfyUI-PhobosStream: Zero-VRAM Video & Image Diffusion Streaming Extension.
+"""ComfyUI-PhobosStream: Standalone Zero-VRAM Video & Image Diffusion Streaming Extension.
 
-Symlink or copy this directory directly into ComfyUI/custom_nodes/
+Works out-of-the-box whether installed standalone via ComfyUI-Manager (`git clone` into
+`ComfyUI/custom_nodes/ComfyUI-PhobosStream`) or linked inside a `phobos-stream` checkout.
 """
 
-import sys
 from pathlib import Path
+import sys
 
-project_root = Path(__file__).resolve().parent.parent
-src_path = project_root / "src"
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
+_ext_dir = Path(__file__).resolve().parent
+_dev_src_dir = _ext_dir.parent / "src"
 
-try:
-    from phobos_stream.integrations.comfyui import (
-        NODE_CLASS_MAPPINGS,
-        NODE_DISPLAY_NAME_MAPPINGS,
-    )
-except ImportError:
-    from nodes import (
-        PhobosStageOffloadPipelineNode,
-        PhobosStreamLoaderNode,
-        PhobosStreamSamplerNode,
-        PhobosStreamVAEDecodeNode,
-    )
+# Prefer editable development `src/` when inside monorepo; otherwise load bundled `phobos_stream/`
+if (_dev_src_dir / "phobos_stream").is_dir():
+    if str(_dev_src_dir) not in sys.path:
+        sys.path.insert(0, str(_dev_src_dir))
+elif (_ext_dir / "phobos_stream").is_dir():
+    if str(_ext_dir) not in sys.path:
+        sys.path.insert(0, str(_ext_dir))
 
-    NODE_CLASS_MAPPINGS = {
-        "PhobosStreamLoader": PhobosStreamLoaderNode,
-        "PhobosStreamSampler": PhobosStreamSamplerNode,
-        "PhobosStreamVAEDecode": PhobosStreamVAEDecodeNode,
-        "PhobosStageOffloadPipeline": PhobosStageOffloadPipelineNode,
-    }
-
-    NODE_DISPLAY_NAME_MAPPINGS = {
-        "PhobosStreamLoader": "🌌 PhobosStream Model Loader (Zero-VRAM)",
-        "PhobosStreamSampler": "⚡ PhobosStream Diffusion Sampler (Stage-Offload)",
-        "PhobosStreamVAEDecode": "🎞️ PhobosStream VAE Decoder",
-        "PhobosStageOffloadPipeline": "🚀 Phobos Zero-VRAM 2K/4K Pipeline (Stage-Offload)",
-    }
+from phobos_stream.integrations.comfyui import (  # noqa: E402
+    NODE_CLASS_MAPPINGS,
+    NODE_DISPLAY_NAME_MAPPINGS,
+)
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]

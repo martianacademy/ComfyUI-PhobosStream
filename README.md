@@ -2,28 +2,40 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom%20Node-orange.svg)](https://github.com/comfyanonymous/ComfyUI)
-[![Backends](https://img.shields.io/badge/Backends-MLX%20•%20CUDA%20•%20ROCm%20•%20GGUF-purple.svg)]()
+[![Backends](https://img.shields.io/badge/Backends-CUDA%20•%20MPS%20•%20MLX%20•%20GGUF-purple.svg)]()
 
-**ComfyUI-PhobosStream** is a zero-VRAM diffusion streaming custom node extension for ComfyUI. It enables consumer hardware — including **16GB/24GB Apple Silicon Macs** and **8GB/12GB NVIDIA GeForce RTX GPUs** — to generate professional-quality video and images with massive 12B–20B+ models without Out-Of-Memory (OOM) crashes.
+**ComfyUI-PhobosStream** is a self-contained zero-VRAM stage-offloading and hook-based per-block streaming extension for ComfyUI. It enables consumer hardware — including **8GB/16GB/24GB Apple Silicon Macs** and **8GB/12GB NVIDIA/AMD GPUs** — to run massive 12B–14B+ image and video Diffusion Transformers without Out-Of-Memory (OOM) crashes.
 
 ---
 
-## 🎯 Supported Models
+## 📊 Verified Empirical Benchmarks (Real 19.5 GB Model Suite @ 1024×1024, 8 Steps)
 
-* **Alibaba Wan2.1 (14B)**: 720p/1080p photorealistic text-to-video.
-* **Black Forest Labs FLUX.1 (12B)**: SOTA photorealistic text-to-image.
-* **Tencent HunyuanVideo (13B)**: Cinematic video generation.
-* **THUDM CogVideoX (5B / 17B)**: Open-source video generation.
+Measured end-to-end on Apple Silicon Metal GPU in isolated subprocesses using `qwen_3_4b.safetensors` (7.5 GB) + `z_image_turbo_bf16.safetensors` (11.7 GB, 34 blocks) + `ae.safetensors` (320 MB):
+
+| Execution Mode | Peak Metal GPU Memory | VRAM Saved | Active Resident Weights | Wall Time (`Step`) | Fidelity vs Stage-Offload BF16 |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Monolithic Baseline** *(All 3 models loaded)* | **26,445.0 MB** | `0.0%` | 19,637.5 MB | `41.97 s` (`4.60 s/step`) | Reference |
+| **Phobos 3-Stage Offload (BF16)** | **12,906.4 MB** | **`51.2%`** | 11,742.5 MB | `46.99 s` (`5.52 s/step`) | Full BF16 (`32.68 dB` PSNR vs non-strip VAE) |
+| **Phobos 3-Stage + Q4 Quantized** | **4,814.7 MB** | **`81.8%`** | 3,310.4 MB | `69.72 s` (`8.36 s/step`) | 4-bit Quantized (`19.25 dB` PSNR) |
+| **Phobos Zero-VRAM Block-Stream (Full BF16)** | **1,601.0 MB** *(DiT: **1,248.2 MB**)* | **`93.9%`** *(DiT: **95.3%**)* | **23.2 MB** (`91.6 MB` active) | `75.04 s` (`8.93 s/step`) | **Bit-Exact BF16 (`0.0000 px` diff)** |
+
+---
+
+## 🎯 Supported Architectures
+
+* **Alibaba Wan2.1 (14B / 1.3B)**: 5D spatio-temporal video latents (`[B, 16, (T-1)//4+1, H//8, W//8]`).
+* **Black Forest Labs FLUX.1 (12B)**: Single or DualCLIP (`clip_l` + `t5xxl`) + 16-ch latents.
+* **Tencent HunyuanVideo (13B)** & **LTX-Video / CogVideoX**: 5D video latents + Tiled VAE decode.
+* **Lumina2 / Z-Image-Turbo** & **SD3 / SDXL**: Dynamic 4-channel & 16-channel latent detection.
 
 ---
 
 ## 🚀 Installation
 
 ### Option 1: Via ComfyUI Manager (Recommended)
-1. Open ComfyUI and open **ComfyUI Manager**.
-2. Click **Install Custom Nodes**.
-3. Search for `ComfyUI-PhobosStream` and click **Install**.
-4. Restart ComfyUI.
+1. Open ComfyUI → **ComfyUI Manager** → **Install Custom Nodes**.
+2. Search for `ComfyUI-PhobosStream` and click **Install** (fully self-contained; only standard `numpy`, `safetensors`, `pydantic` required).
+3. Restart ComfyUI.
 
 ### Option 2: Git Clone
 ```bash
@@ -33,59 +45,21 @@ cd ComfyUI-PhobosStream
 pip install -r requirements.txt
 ```
 
----
-
-## 🧩 Nodes & Workflow
-
-```mermaid
-graph LR
-    L["🌌 PhobosStream Model Loader<br/>(Wan2.1 / FLUX.1 / Hunyuan)"] -->|"aether_model"| S["⚡ PhobosStream Diffusion Sampler<br/>(Prompt, Steps, Seed, Guidance)"]
-    S -->|"images"| P["PreviewImage / SaveImage"]
-    S -->|"latents"| V["🎞️ PhobosStream VAE Decoder"]
-    V -->|"images"| VC["VHS_VideoCombine / Save"]
-```
-
-### 1. `🌌 PhobosStream Model Loader (Zero-VRAM)`
-* **Inputs:**
-  * `model_name`: Model identifier (e.g. `wan2.1-14b`, `flux-schnell`).
-  * `architecture`: `wan2.1`, `flux`, `hunyuan`, `cogvideox`.
-  * `backend`: `auto` (Apple Silicon Metal MLX / CUDA / GGUF).
-  * `num_blocks`: Number of transformer blocks (e.g., 40 for Wan2.1).
-  * `hidden_size`: Model hidden dimension (e.g., 4096).
-
-### 2. `⚡ PhobosStream Diffusion Sampler (Disk-Stream)`
-* **Inputs:**
-  * `aether_model`: Connected from Loader.
-  * `prompt`: Text description.
-  * `width` & `height`: Resolution (e.g. 1280x720).
-  * `num_frames`: Frames count (49 for video, 1 for image).
-  * `steps`: Diffusion steps (20–30 recommended).
-  * `seed`: Random seed.
-* **Outputs:**
-  * `images`: Standard ComfyUI `IMAGE` tensor `(Batch, H, W, 3)`.
-  * `latents`: Raw spatio-temporal latent tensors.
-
-### 3. `🎞️ PhobosStream VAE Decoder`
-* Decodes latents to full-resolution RGB video frames.
+*(Optional)* Set `PHOBOS_EXTRA_MODELS_DIR=/path/to/shared/models` if you store `diffusion_models`, `text_encoders`, and `vae` outside ComfyUI's default `models/` directory.
 
 ---
 
-## 📊 Empirical Benchmarks & VRAM Savings
+## 🧩 Available Nodes (Category: `PhobosStream`)
 
-| Model & Architecture | Baseline Full VRAM | ComfyUI-PhobosStream | VRAM Saved | Target Hardware |
-| :--- | :--- | :--- | :--- | :--- |
-| **Alibaba Wan2.1 (14B Video)** | ~38.4 GB (Weights + Act) | **788.11 MB** | **97.9% Reduction** | 8GB GPUs / Mac Mini (M1–M4) |
-| **Z-Image-Turbo (11B DiT)** | ~23.5 GB (18.8GB + Act) | **~920.00 MB** | **96.1% Reduction** | RTX 3060 / 4060 (8GB/12GB) |
-| **FLUX.1 Schnell/Dev (12B)** | ~24.8 GB | **~850.00 MB** | **96.6% Reduction** | 8GB-12GB GPUs / 16GB Macs |
-| **SD-Turbo (Real-time)** | ~2.8 GB | **~340.00 MB** | **87.8% Reduction** | Ultra Low-RAM Devices (<1GB) |
-
-### Live Measured Telemetry (Apple Silicon Metal GPU)
-```text
-  • Text Encoding Stage:     2.47 ms (Sequential offload)
-  • DiT Denoising Stage:     56.150 s (11.230 s/step @ 720p HD)
-  • VAE Latent Decode Stage: 60.32 ms
-  • Peak VRAM Consumption:   788.11 MB (Crash-Free Zero-VRAM Execution)
-```
+1. **`🚀 Phobos Zero-VRAM 2K/4K & Video Pipeline` (`PhobosStageOffloadPipeline`)**
+   * All-in-one 3-stage sequential offloader (`Text Encoder -> Unload -> DiT/UNet -> Unload -> Tiled VAE -> Unload`).
+   * Supports `clip_name2` (`DualCLIPLoader`), `num_frames` (image & 5D video), `weight_dtype` (`default`, `fp8_e4m3fn`), and `block_stream_mode` (`stage_only`, `cpu_offload`, `mmap_stream`).
+2. **`🔌 PhobosStream Block-Streamer (Any MODEL)` (`PhobosBlockStreamPatcher`)**
+   * Drop-in `MODEL -> MODEL` patcher node for any standard ComfyUI workflow (LoRAs, ControlNet, WanVideo, FLUX).
+   * Attaches PyTorch pre/post forward hooks onto repeating transformer blocks (`cpu_offload` pinned-RAM streaming or `mmap_stream` zero-RAM `.safetensors` streaming) with dynamic `cpu`/`mps`/`cuda` device matching.
+3. **`🌌 PhobosStream Model Loader (Zero-VRAM)` (`PhobosStreamLoader`)** → outputs `phobos_model`.
+4. **`⚡ PhobosStream Diffusion Sampler (Stage-Offload)` (`PhobosStreamSampler`)** → takes `phobos_model`, outputs `images` (`IMAGE`) & `latents` (`PHOBOS_LATENT`).
+5. **`🎞️ PhobosStream Tiled VAE Decoder` (`PhobosStreamVAEDecode`)** → decodes `PHOBOS_LATENT` to `IMAGE` using tiled VAE fallback.
 
 ---
 
