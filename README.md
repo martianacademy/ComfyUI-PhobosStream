@@ -9,9 +9,19 @@
 
 ---
 
-## 📊 Verified Empirical Benchmarks (Real 19.5 GB Model Suite @ 1024×1024, 8 Steps)
+## 📊 Verified Empirical Benchmarks
 
-Measured end-to-end on Apple Silicon Metal GPU in isolated subprocesses using `qwen_3_4b.safetensors` (7.5 GB) + `z_image_turbo_bf16.safetensors` (11.7 GB, 34 blocks) + `ae.safetensors` (320 MB):
+### A. NVIDIA CUDA GPU — 8.0 GiB Hardware VRAM Cap & 3-Tier `HYBRID_BUDGET` (Tesla T4)
+
+* **`Wan-AI/Wan2.1-T2V-1.3B-Diffusers` (~14.5 GB BF16)** under strict **`8.00 GiB` CUDA VRAM cap**: standard `WanPipeline.to("cuda")` crashes with `CUDA out of memory`, while **PhobosStream (`hybrid_budget`)** completes 17-frame `480×320` video generation in **`4,373.1 MB` (`4.27 GiB`) Peak CUDA VRAM**.
+* **24-Block FP16 DiT (4 Steps on Tesla T4)**:
+  * **`cpu_offload` (Pinned + Async CUDA `record_stream` Prefetch)**: **`322.2 MB` Peak VRAM (`93.0%` saved)** in **`1.074 s`** vs `1.024 s` monolithic (`+4.9%` latency overhead, `0.0` max abs diff).
+  * **`hybrid_budget` (`7 GPU + 9 CPU + 8 NVMe`)**: **`994.3 MB` Peak VRAM (`78.4%` saved)** in **`2.418 s`** (`2.34×` faster than pure `mmap_stream`, `0.0` max abs diff).
+  * **`mmap_stream` (`24 NVMe`, Zero-RAM `meta`)**: **`226.1 MB` Peak VRAM (`95.1%` saved)** in `5.653 s` (`0.0` max abs diff).
+
+### B. Apple Silicon Metal GPU — Real 19.5 GB Model Suite (`1024×1024`, 8 Steps)
+
+Measured end-to-end in isolated subprocesses using `qwen_3_4b.safetensors` (7.5 GB) + `z_image_turbo_bf16.safetensors` (11.7 GB, 34 blocks) + `ae.safetensors` (320 MB):
 
 | Execution Mode | Peak Metal GPU Memory | VRAM Saved | Active Resident Weights | Wall Time (`Step`) | Fidelity vs Stage-Offload BF16 |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -59,10 +69,10 @@ pip install -r requirements.txt
 
 1. **`🚀 Phobos Zero-VRAM 2K/4K & Video Pipeline` (`PhobosStageOffloadPipeline`)**
    * All-in-one 3-stage sequential offloader (`Text Encoder -> Unload -> DiT/UNet -> Unload -> Tiled VAE -> Unload`).
-   * Supports `clip_name2` (`DualCLIPLoader`), `num_frames` (image & 5D video), `weight_dtype` (`default`, `fp8_e4m3fn`), and `block_stream_mode` (`stage_only`, `cpu_offload`, `mmap_stream`).
+   * Supports `clip_name2` (`DualCLIPLoader`), `num_frames` (image & 5D video), `weight_dtype` (`default`, `fp8_e4m3fn`), `block_stream_mode` (`stage_only`, `hybrid_budget`, `cpu_offload`, `mmap_stream`), and `vram_budget_mb` (`0` = auto hardware query).
 2. **`🔌 PhobosStream Block-Streamer (Any MODEL)` (`PhobosBlockStreamPatcher`)**
    * Drop-in `MODEL -> MODEL` patcher node for any standard ComfyUI workflow (LoRAs, ControlNet, WanVideo, FLUX).
-   * Attaches PyTorch pre/post forward hooks onto repeating transformer blocks (`cpu_offload` pinned-RAM streaming or `mmap_stream` zero-RAM `.safetensors` streaming) with dynamic `cpu`/`mps`/`cuda` device matching.
+   * Attaches PyTorch pre/post forward hooks onto repeating transformer blocks across 3 tiers (`hybrid_budget` auto GPU+CPU+NVMe split, `cpu_offload` double-buffered pinned-RAM streaming, or `mmap_stream` zero-RAM `.safetensors` streaming) with dynamic `cpu`/`mps`/`cuda` device matching.
 3. **`🌌 PhobosStream Model Loader (Zero-VRAM)` (`PhobosStreamLoader`)** → outputs `phobos_model`.
 4. **`⚡ PhobosStream Diffusion Sampler (Stage-Offload)` (`PhobosStreamSampler`)** → takes `phobos_model`, outputs `images` (`IMAGE`) & `latents` (`PHOBOS_LATENT`).
 5. **`🎞️ PhobosStream Tiled VAE Decoder` (`PhobosStreamVAEDecode`)** → decodes `PHOBOS_LATENT` to `IMAGE` using tiled VAE fallback.
