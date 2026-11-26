@@ -1,6 +1,6 @@
 # <img src="https://raw.githubusercontent.com/martianacademy/ComfyUI-PhobosStream/main/assets/icon.png" width="42" align="top" alt="PhobosStream Icon" /> ComfyUI-PhobosStream
 
-[![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-v0.4.0-EE6A3E)](https://registry.comfy.org/publishers/martianacademy/nodes/comfyui-phobosstream)
+[![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-v0.5.0-EE6A3E)](https://registry.comfy.org/publishers/martianacademy/nodes/comfyui-phobosstream)
 [![PyPI Core](https://img.shields.io/pypi/v/phobos-stream?color=EE6A3E&label=phobos-stream)](https://pypi.org/project/phobos-stream/)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/martianacademy/phobos-stream/blob/main/notebooks/MiniMax_H3_Free_T4_PhobosStream.ipynb)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom_Node-orange.svg)](https://github.com/comfyanonymous/ComfyUI)
@@ -37,6 +37,11 @@
 | **`PhobosBlockStreamPatcher` + TeaCache/FBCache (`0.12`)** | **`1,960.5 MB` (`1.91 GiB`)** | **`86.1%`** | **`120.39 s` (`10.03 s`)** | **`1.50×` faster** | **`42.67 dB` (`0.9995`)** |
 | **`PhobosBlockStreamPatcher` + TeaCache/FBCache (`0.22`)** | **`1,960.5 MB` (`1.91 GiB`)** | **`86.1%`** | **`93.11 s` (`7.76 s`)** | **`1.94×` faster** | **`35.91 dB` (`0.9973`)** |
 
+* **Dual-Stream MMDiT `HunyuanVideo-13B` Full BF16 (`25.64 GB`, `20 double_blocks + 40 single_blocks`) under enforced `24.0 GiB` RTX 3090 / 4090 VRAM Cap**:
+  * Stock `--highvram` & ComfyUI `--lowvram`: ❌ **`CUDA OutOfMemoryError` (`24,534.5 MB` > `24.0 GiB`)**.
+  * **`PhobosBlockStreamPatcher` (`cpu_offload`, Lossless):** ✅ **`1,807.1 MB` (`1.76 GiB`) Peak VRAM (`92.8%` less than model size)** in **`12.12 s` (`1.01 s/step`)**, **`0.0` bit-exact (`99.99 dB` PSNR)**.
+  * **`PhobosBlockStreamPatcher` + Multi-Group MMDiT FBCache (`0.12` / `0.18`):** ✅ **`1,861.5 MB` Peak VRAM**, **`10.45 s` (`1.16×`, `36.85 dB` PSNR / `0.9950` cos)** and **`7.92 s` (`1.53×`, `28.05 dB` PSNR / `0.9616` cos)**!
+
 * **`Wan-AI/Wan2.1-T2V-1.3B-Diffusers` (~14.5 GB BF16)** under strict **`8.00 GiB` CUDA VRAM cap**: standard `WanPipeline.to("cuda")` crashes with `CUDA out of memory`, while **PhobosStream (`hybrid_budget`)** completes full widescreen **`832×480` × 25-frame (40-step)** photorealistic video generation in **`3,263.9 MB` (`3.19 GiB`) Peak CUDA VRAM** (`22m 12s` on Tesla T4).
 * **24-Block FP16 DiT (4 Steps on Tesla T4)**:
   * **`cpu_offload` (Pinned + Async CUDA `record_stream` Prefetch)**: **`322.2 MB` Peak VRAM (`93.0%` saved)** in **`1.074 s`** vs `1.024 s` monolithic (`+4.9%` latency overhead, `0.0` max abs diff).
@@ -53,6 +58,8 @@ Measured end-to-end in isolated subprocesses using `qwen_3_4b.safetensors` (7.5 
 | **Phobos 3-Stage Offload (BF16)** | **12,906.4 MB** | **`51.2%`** | 11,742.5 MB | `46.99 s` (`5.52 s/step`) | Full BF16 (`32.68 dB` PSNR vs non-strip VAE) |
 | **Phobos 3-Stage + Q4 Quantized** | **4,814.7 MB** | **`81.8%`** | 3,310.4 MB | `69.72 s` (`8.36 s/step`) | 4-bit Quantized (`19.25 dB` PSNR) |
 | **Phobos Zero-VRAM Block-Stream (Full BF16)** | **1,601.0 MB** *(DiT: **1,248.2 MB**)* | **`93.9%`** *(DiT: **95.3%**)* | **23.2 MB** (`91.6 MB` active) | `75.04 s` (`8.93 s/step`) | **Bit-Exact BF16 (`0.0000 px` diff)** |
+| **Phobos `hybrid_stream` (`6 GB` Budget — 16 GB Mac)** | **6,068.5 MB** | **`77.1%`** | 4,882.3 MB (`14/32`) | **`54.05 s`–`68.20 s`** (`50.69 s` denoise) | **BF16 (`38.00 dB` vs Block-Stream)** |
+| **Phobos `hybrid_stream` (`8 GB` Budget — 16/24 GB Mac)** | **8,138.8 MB** | **`69.2%`** | 6,924.5 MB (`20/32`) | **`54.60 s` (`1.37×` faster)** | **BF16 (`38.18 dB` vs Block-Stream)** |
 
 ---
 
