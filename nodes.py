@@ -20,6 +20,7 @@ from phobos_stream.integrations.comfyui.nodes import (  # noqa: E402
     PhobosStreamSamplerNode,
     PhobosStreamVAEDecodeNode,
 )
+from phobos_stream.integrations.comfyui.vae_patcher import PhobosVAEStreamPatcherNode  # noqa: E402
 
 __all__ = [
     "PhobosBlockStreamPatcherNode",
@@ -27,4 +28,5 @@ __all__ = [
     "PhobosStreamLoaderNode",
     "PhobosStreamSamplerNode",
     "PhobosStreamVAEDecodeNode",
+    "PhobosVAEStreamPatcherNode",
 ]

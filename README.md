@@ -1,7 +1,8 @@
 # <img src="https://raw.githubusercontent.com/martianacademy/ComfyUI-PhobosStream/main/assets/icon.png" width="42" align="top" alt="PhobosStream Icon" /> ComfyUI-PhobosStream
 
-[![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-v0.2.4-EE6A3E)](https://registry.comfy.org/publishers/martianacademy/nodes/comfyui-phobosstream)
+[![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-v0.3.0-EE6A3E)](https://registry.comfy.org/publishers/martianacademy/nodes/comfyui-phobosstream)
 [![PyPI Core](https://img.shields.io/pypi/v/phobos-stream?color=EE6A3E&label=phobos-stream)](https://pypi.org/project/phobos-stream/)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/martianacademy/phobos-stream/blob/main/notebooks/MiniMax_H3_Free_T4_PhobosStream.ipynb)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom_Node-orange.svg)](https://github.com/comfyanonymous/ComfyUI)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/martianacademy/ComfyUI-PhobosStream/blob/main/LICENSE)
 
@@ -42,6 +43,7 @@ Measured end-to-end in isolated subprocesses using `qwen_3_4b.safetensors` (7.5 
 
 ## 🎯 Supported Architectures
 
+* **MiniMax-H3 (33B / 20B Pruned Omni Video+Audio)**: `refiner_blocks` + 36-block `4.85 GB` `ViT3D` Video VAE + `32 kHz` Stereo BigVGAN Audio VAE (see [`workflows/minimax_h3_lowvram.json`](workflows/minimax_h3_lowvram.json)).
 * **Alibaba Wan2.1 (14B / 1.3B)**: 5D spatio-temporal video latents (`[B, 16, (T-1)//4+1, H//8, W//8]`).
 * **Black Forest Labs FLUX.1 (12B)**: Single or DualCLIP (`clip_l` + `t5xxl`) + 16-ch latents.
 * **Tencent HunyuanVideo (13B)** & **LTX-Video / CogVideoX**: 5D video latents + Tiled VAE decode.
@@ -79,11 +81,15 @@ pip install -r requirements.txt
    * All-in-one 3-stage sequential offloader (`Text Encoder -> Unload -> DiT/UNet -> Unload -> Tiled VAE -> Unload`).
    * Supports `clip_name2` (`DualCLIPLoader`), `num_frames` (image & 5D video), `weight_dtype` (`default`, `fp8_e4m3fn`), `block_stream_mode` (`stage_only`, `hybrid_budget`, `cpu_offload`, `mmap_stream`), and `vram_budget_mb` (`0` = auto hardware query).
 2. **`🔌 PhobosStream Block-Streamer (Any MODEL)` (`PhobosBlockStreamPatcher`)**
-   * Drop-in `MODEL -> MODEL` patcher node for any standard ComfyUI workflow (LoRAs, ControlNet, WanVideo, FLUX).
+   * Drop-in `MODEL -> MODEL` patcher node for any standard ComfyUI workflow (LoRAs, ControlNet, MiniMax-H3, WanVideo, FLUX).
    * Attaches PyTorch pre/post forward hooks onto repeating transformer blocks across 3 tiers (`hybrid_budget` auto GPU+CPU+NVMe split, `cpu_offload` double-buffered pinned-RAM streaming, or `mmap_stream` zero-RAM `.safetensors` streaming) with dynamic `cpu`/`mps`/`cuda` device matching.
-3. **`🌌 PhobosStream Model Loader (Zero-VRAM)` (`PhobosStreamLoader`)** → outputs `phobos_model`.
-4. **`⚡ PhobosStream Diffusion Sampler (Stage-Offload)` (`PhobosStreamSampler`)** → takes `phobos_model`, outputs `images` (`IMAGE`) & `latents` (`PHOBOS_LATENT`).
-5. **`🎞️ PhobosStream Tiled VAE Decoder` (`PhobosStreamVAEDecode`)** → decodes `PHOBOS_LATENT` to `IMAGE` using tiled VAE fallback.
+3. **`🎬 PhobosStream VAE Streamer (Video & Audio VAE)` (`PhobosVAEStreamPatcher`)**
+   * Drop-in `VAE -> VAE` patcher node right between `VAELoader` and `VAEDecode` / `VAEDecodeAudio`.
+   * Drops unused `encoder`/`quant_conv` weights on decode, streams heavy 3D/ViT3D Video VAEs (`MiniMaxH3VideoVAE`, `WanVAE`) via `HYBRID_BUDGET` or `CPU_OFFLOAD` (`466.8 MB` Peak VRAM on 36-block `4.85 GB` `ViT3D`), and automatically applies smooth linear-crossfade overlapped chunk decoding to 1D Audio VAEs (`BigVGAN` `32 kHz` Stereo).
+   * Ready-to-import workflow: [`workflows/minimax_h3_lowvram.json`](workflows/minimax_h3_lowvram.json).
+4. **`🌌 PhobosStream Model Loader (Zero-VRAM)` (`PhobosStreamLoader`)** → outputs `phobos_model`.
+5. **`⚡ PhobosStream Diffusion Sampler (Stage-Offload)` (`PhobosStreamSampler`)** → takes `phobos_model`, outputs `images` (`IMAGE`) & `latents` (`PHOBOS_LATENT`).
+6. **`🎞️ PhobosStream Tiled VAE Decoder` (`PhobosStreamVAEDecode`)** → decodes `PHOBOS_LATENT` to `IMAGE` using tiled VAE fallback.
 
 ---
 
