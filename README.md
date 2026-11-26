@@ -5,13 +5,21 @@
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom_Node-orange.svg)](https://github.com/comfyanonymous/ComfyUI)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/martianacademy/ComfyUI-PhobosStream/blob/main/LICENSE)
 
-**ComfyUI-PhobosStream** is a self-contained zero-VRAM stage-offloading and hook-based per-block streaming extension for ComfyUI. It enables consumer hardware — including **8GB/16GB/24GB Apple Silicon Macs** and **8GB/12GB NVIDIA/AMD GPUs** — to run massive 12B–14B+ image and video Diffusion Transformers without Out-Of-Memory (OOM) crashes.
+**ComfyUI-PhobosStream** is a self-contained zero-VRAM stage-offloading and hook-based per-block streaming extension for ComfyUI. It enables consumer hardware — including **8GB/16GB/24GB Apple Silicon Macs** and **8GB/12GB/16GB NVIDIA/AMD GPUs** — to run massive **12B–33B+ image and video Diffusion Transformers (MiniMax-H3, Wan2.1, FLUX.1, HunyuanVideo)** without Out-Of-Memory (OOM) crashes.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/martianacademy/ComfyUI-PhobosStream/main/assets/minimax_h3_demo.gif" width="560" alt="MiniMax-H3 5.9s Video + 32kHz Stereo Audio generated via ComfyUI + PhobosStream on Tesla T4" />
+  <br/>
+  <sub><b>Live Output — MiniMax-H3 (5.88s, 141 frames @ 24fps + 32 kHz Stereo Audio) on a Free 12 GiB RAM + Tesla T4</b><br/>PhobosStream streamed the 36-block 4.85 GB <code>ViT3D</code> Video VAE in just <b>466.8 MB Peak VRAM (96.8% saved vs &gt;14.56 GiB OOM)</b>.</sub>
+</p>
 
 ---
 
 ## 📊 Verified Empirical Benchmarks
 
-### A. NVIDIA CUDA GPU — 8.0 GiB Hardware VRAM Cap & 3-Tier `HYBRID_BUDGET` (Tesla T4)
+### A. NVIDIA CUDA GPU — MiniMax-H3 (33B-Class), Wan2.1 (8 GiB Cap) & 3-Tier `HYBRID_BUDGET` (Tesla T4)
+
+* **`MiniMaxAI/MiniMax-H3` (`32B Qwen3-VL` + `20B` 4-Step Turbo + `4.85 GB` 36-block `ViT3D` Video VAE + `32 kHz` Stereo Audio)** on a **Free `12 GiB` RAM + `14.56 GiB` Tesla T4**: stock ComfyUI `MiniMaxH3VideoVAE` crashes with `CUDA OOM` (`> 14.56 GiB`), while **PhobosStream `TorchBlockStreamer`** decodes all `141` frames (`5.88s @ 24fps`, `736×416`) in **`466.8 MB` Peak CUDA VRAM (`96.8%` saved)** + chunked Stereo Audio VAE in **`618.4 MB`**.
 
 * **`Wan-AI/Wan2.1-T2V-1.3B-Diffusers` (~14.5 GB BF16)** under strict **`8.00 GiB` CUDA VRAM cap**: standard `WanPipeline.to("cuda")` crashes with `CUDA out of memory`, while **PhobosStream (`hybrid_budget`)** completes full widescreen **`832×480` × 25-frame (40-step)** photorealistic video generation in just **`3,263.9 MB` (`3.19 GiB`) Peak CUDA VRAM**.
 * **24-Block FP16 DiT (4 Steps on Tesla T4)**:
