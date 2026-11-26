@@ -13,6 +13,7 @@ elif (_ext_dir / "phobos_stream").is_dir():
     if str(_ext_dir) not in sys.path:
         sys.path.insert(0, str(_ext_dir))
 
+from phobos_stream.integrations.comfyui.cache_node import PhobosFirstBlockCacheNode  # noqa: E402
 from phobos_stream.integrations.comfyui.nodes import (  # noqa: E402
     PhobosBlockStreamPatcherNode,
     PhobosStageOffloadPipelineNode,
@@ -24,6 +25,7 @@ from phobos_stream.integrations.comfyui.vae_patcher import PhobosVAEStreamPatche
 
 __all__ = [
     "PhobosBlockStreamPatcherNode",
+    "PhobosFirstBlockCacheNode",
     "PhobosStageOffloadPipelineNode",
     "PhobosStreamLoaderNode",
     "PhobosStreamSamplerNode",
