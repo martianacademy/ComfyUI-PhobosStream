@@ -1,6 +1,6 @@
 # <img src="https://raw.githubusercontent.com/martianacademy/ComfyUI-PhobosStream/main/assets/icon.png" width="42" align="top" alt="PhobosStream Icon" /> ComfyUI-PhobosStream
 
-[![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-v0.3.0-EE6A3E)](https://registry.comfy.org/publishers/martianacademy/nodes/comfyui-phobosstream)
+[![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-v0.3.1-EE6A3E)](https://registry.comfy.org/publishers/martianacademy/nodes/comfyui-phobosstream)
 [![PyPI Core](https://img.shields.io/pypi/v/phobos-stream?color=EE6A3E&label=phobos-stream)](https://pypi.org/project/phobos-stream/)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/martianacademy/phobos-stream/blob/main/notebooks/MiniMax_H3_Free_T4_PhobosStream.ipynb)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom_Node-orange.svg)](https://github.com/comfyanonymous/ComfyUI)
@@ -20,7 +20,13 @@
 
 ### A. NVIDIA CUDA GPU — MiniMax-H3 (33B-Class), Wan2.1 (8 GiB Cap) & 3-Tier `HYBRID_BUDGET` (Tesla T4)
 
-* **`MiniMaxAI/MiniMax-H3` (`32B Qwen3-VL` + `20B` 4-Step Turbo + `4.85 GB` 36-block `ViT3D` Video VAE + `32 kHz` Stereo Audio)** on a **Free `12 GiB` RAM + `14.56 GiB` Tesla T4**: stock ComfyUI `MiniMaxH3VideoVAE` crashes with `CUDA OOM` (`> 14.56 GiB`), while **PhobosStream `TorchBlockStreamer`** decodes all `141` frames (`5.88s @ 24fps`, `736×416`) in **`466.8 MB` Peak CUDA VRAM (`96.8%` saved, `5m 08s`)** + chunked Stereo Audio VAE in **`618.4 MB` (`8.15 s`)**. Total end-to-end wall time on free 2018 T4 + `12 GiB` RAM: **`25m 32s`** (`74.1s` Stage 1 + `19m 01s` Stage 2 disk-offloaded Turing compute + `5m 08s` Stage 3A + `8.2s` Stage 3B).
+* **`MiniMaxAI/MiniMax-H3` (`32B Qwen3-VL` + `20B` 4-Step Turbo + `4.85 GB` 36-block `ViT3D` Video VAE + `32 kHz` Stereo Audio)** on a **Tesla T4 (`14.58 GiB` VRAM)**:
+  * **Isolated `PhobosVAEStreamPatcher` Ablation (`141` frames @ `736×416`, `torch 2.11.0+cu128`, `16 GiB` RAM):** Stock `MiniMaxH3VideoVAE` crashes with **`CUDA OOM` (`> 14,300.8 MB`)**, while **`PhobosVAEStreamPatcher`** decodes all `141` frames with **`0.0` bit-exact diff**:
+    * **`cpu_offload` (`0 GPU / 36 CPU`):** **`469.7 MB` Peak VRAM (`96.8%` saved)** in **`51.10 s`**
+    * **`hybrid_budget 3 GB` (`21 GPU / 15 CPU`):** **`3,159.1 MB` Peak VRAM (`78.3%` saved)** in **`38.37 s`** (**`1.33×` faster**)
+    * **`hybrid_budget 6 GB` (`36 GPU / 0 CPU`):** **`4,822.5 MB` Peak VRAM (`66.9%` saved)** in **`32.75 s`** (**`1.56×` faster**)
+    * **4D Stereo `32 kHz` BigVGAN Audio VAE (`188,000` stereo samples):** **`259.6 MB` Peak VRAM** in **`1.95 s`**!
+  * **End-to-End 3-Stage Free Colab (`12 GiB` Host RAM, `0 B` swap):** Total `25m 32s` (`74.1s` Stage 1 + `19m 01s` Stage 2 disk-offloaded Turing compute + `5m 08s` Stage 3A + `8.2s` Stage 3B).
 
 * **`Wan-AI/Wan2.1-T2V-1.3B-Diffusers` (~14.5 GB BF16)** under strict **`8.00 GiB` CUDA VRAM cap**: standard `WanPipeline.to("cuda")` crashes with `CUDA out of memory`, while **PhobosStream (`hybrid_budget`)** completes full widescreen **`832×480` × 25-frame (40-step)** photorealistic video generation in **`3,263.9 MB` (`3.19 GiB`) Peak CUDA VRAM** (`22m 12s` on Tesla T4).
 * **24-Block FP16 DiT (4 Steps on Tesla T4)**:
