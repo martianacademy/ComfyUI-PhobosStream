@@ -1,6 +1,6 @@
 # <img src="https://raw.githubusercontent.com/martianacademy/ComfyUI-PhobosStream/main/assets/icon.png" width="42" align="top" alt="PhobosStream Icon" /> ComfyUI-PhobosStream
 
-[![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-v0.3.1-EE6A3E)](https://registry.comfy.org/publishers/martianacademy/nodes/comfyui-phobosstream)
+[![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-v0.4.0-EE6A3E)](https://registry.comfy.org/publishers/martianacademy/nodes/comfyui-phobosstream)
 [![PyPI Core](https://img.shields.io/pypi/v/phobos-stream?color=EE6A3E&label=phobos-stream)](https://pypi.org/project/phobos-stream/)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/martianacademy/phobos-stream/blob/main/notebooks/MiniMax_H3_Free_T4_PhobosStream.ipynb)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom_Node-orange.svg)](https://github.com/comfyanonymous/ComfyUI)
@@ -27,6 +27,15 @@
     * **`hybrid_budget 6 GB` (`36 GPU / 0 CPU`):** **`4,822.5 MB` Peak VRAM (`66.9%` saved)** in **`32.75 s`** (**`1.56×` faster**)
     * **4D Stereo `32 kHz` BigVGAN Audio VAE (`188,000` stereo samples):** **`259.6 MB` Peak VRAM** in **`1.95 s`**!
   * **End-to-End 3-Stage Free Colab (`12 GiB` Host RAM, `0 B` swap):** Total `25m 32s` (`74.1s` Stage 1 + `19m 01s` Stage 2 disk-offloaded Turing compute + `5m 08s` Stage 3A + `8.2s` Stage 3B).
+
+* **Head-to-Head `Wan2.1-T2V-14B FP8` (`14.29 GB`, 40 blocks, `832×480` × `17` frames × `12` steps) vs ComfyUI Native `--lowvram` on Tesla T4 (`14.58 GiB` VRAM, `32 GiB` RAM)**:
+
+| Engine / Mode | Peak CUDA VRAM | VRAM Saved | 12-Step Time (`sec/step`) | Speedup vs ComfyUI | Fidelity (`PSNR / Cosine`) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **ComfyUI Native `--lowvram`** *(Baseline)* | `14,135.9 MB` (`13.80 GiB`) | `0.0%` | `180.73 s` (`15.06 s`) | `1.00×` | Reference |
+| **`PhobosBlockStreamPatcher` (`cpu_offload`, Lossless)** | **`1,808.2 MB` (`1.77 GiB`)** | **`87.2%`** | **`178.83 s` (`14.90 s`)** | **`1.01×` faster** | **`0.0` Bit-Exact (`1.0000`)** |
+| **`PhobosBlockStreamPatcher` + TeaCache/FBCache (`0.12`)** | **`1,960.5 MB` (`1.91 GiB`)** | **`86.1%`** | **`120.39 s` (`10.03 s`)** | **`1.50×` faster** | **`42.67 dB` (`0.9995`)** |
+| **`PhobosBlockStreamPatcher` + TeaCache/FBCache (`0.22`)** | **`1,960.5 MB` (`1.91 GiB`)** | **`86.1%`** | **`93.11 s` (`7.76 s`)** | **`1.94×` faster** | **`35.91 dB` (`0.9973`)** |
 
 * **`Wan-AI/Wan2.1-T2V-1.3B-Diffusers` (~14.5 GB BF16)** under strict **`8.00 GiB` CUDA VRAM cap**: standard `WanPipeline.to("cuda")` crashes with `CUDA out of memory`, while **PhobosStream (`hybrid_budget`)** completes full widescreen **`832×480` × 25-frame (40-step)** photorealistic video generation in **`3,263.9 MB` (`3.19 GiB`) Peak CUDA VRAM** (`22m 12s` on Tesla T4).
 * **24-Block FP16 DiT (4 Steps on Tesla T4)**:
@@ -88,14 +97,16 @@ pip install -r requirements.txt
    * Supports `clip_name2` (`DualCLIPLoader`), `num_frames` (image & 5D video), `weight_dtype` (`default`, `fp8_e4m3fn`), `block_stream_mode` (`stage_only`, `hybrid_budget`, `cpu_offload`, `mmap_stream`), and `vram_budget_mb` (`0` = auto hardware query).
 2. **`🔌 PhobosStream Block-Streamer (Any MODEL)` (`PhobosBlockStreamPatcher`)**
    * Drop-in `MODEL -> MODEL` patcher node for any standard ComfyUI workflow (LoRAs, ControlNet, MiniMax-H3, WanVideo, FLUX).
-   * Attaches PyTorch pre/post forward hooks onto repeating transformer blocks across 3 tiers (`hybrid_budget` auto GPU+CPU+NVMe split, `cpu_offload` double-buffered pinned-RAM streaming, or `mmap_stream` zero-RAM `.safetensors` streaming) with dynamic `cpu`/`mps`/`cuda` device matching.
-3. **`🎬 PhobosStream VAE Streamer (Video & Audio VAE)` (`PhobosVAEStreamPatcher`)**
+   * Attaches PyTorch pre/post forward hooks onto repeating transformer blocks across 3 tiers (`hybrid_budget` auto GPU+CPU+NVMe split, `cpu_offload` double-buffered pinned-RAM streaming, or `mmap_stream` zero-RAM `.safetensors` streaming) + built-in `cache_rel_l1_thresh` for Zero-DMA TeaCache / First-Block Residual Caching.
+3. **`⚡ PhobosStream TeaCache / First-Block Cache` (`PhobosFirstBlockCache`)**
+   * Standalone or chainable `MODEL -> MODEL` step-caching accelerator (`1.50×–1.94×` speedup on `Wan2.1-14B` at `42.7 dB` / `35.9 dB` PSNR). Automatically resets across new generations and isolates `cond` / `uncond` CFG branches; skips PCIe DMA when chained with `PhobosBlockStreamPatcher`.
+4. **`🎬 PhobosStream VAE Streamer (Video & Audio VAE)` (`PhobosVAEStreamPatcher`)**
    * Drop-in `VAE -> VAE` patcher node right between `VAELoader` and `VAEDecode` / `VAEDecodeAudio`.
-   * Drops unused `encoder`/`quant_conv` weights on decode, streams heavy 3D/ViT3D Video VAEs (`MiniMaxH3VideoVAE`, `WanVAE`) via `HYBRID_BUDGET` or `CPU_OFFLOAD` (`466.8 MB` Peak VRAM on 36-block `4.85 GB` `ViT3D`), and automatically applies smooth linear-crossfade overlapped chunk decoding to 1D Audio VAEs (`BigVGAN` `32 kHz` Stereo).
+   * Drops unused `encoder`/`quant_conv` weights on decode, streams heavy 3D/ViT3D Video VAEs (`MiniMaxH3VideoVAE`, `WanVAE`) via `HYBRID_BUDGET` or `CPU_OFFLOAD` (`469.7 MB` Peak VRAM on 36-block `4.85 GB` `ViT3D`), and automatically applies smooth linear-crossfade overlapped chunk decoding to 3D/4D Audio VAEs (`BigVGAN` `32 kHz` Stereo in `259.6 MB` / `1.95 s`).
    * Ready-to-import workflow: [`workflows/minimax_h3_lowvram.json`](workflows/minimax_h3_lowvram.json).
-4. **`🌌 PhobosStream Model Loader (Zero-VRAM)` (`PhobosStreamLoader`)** → outputs `phobos_model`.
-5. **`⚡ PhobosStream Diffusion Sampler (Stage-Offload)` (`PhobosStreamSampler`)** → takes `phobos_model`, outputs `images` (`IMAGE`) & `latents` (`PHOBOS_LATENT`).
-6. **`🎞️ PhobosStream Tiled VAE Decoder` (`PhobosStreamVAEDecode`)** → decodes `PHOBOS_LATENT` to `IMAGE` using tiled VAE fallback.
+5. **`🌌 PhobosStream Model Loader (Zero-VRAM)` (`PhobosStreamLoader`)** → outputs `phobos_model`.
+6. **`⚡ PhobosStream Diffusion Sampler (Stage-Offload)` (`PhobosStreamSampler`)** → takes `phobos_model`, outputs `images` (`IMAGE`) & `latents` (`PHOBOS_LATENT`).
+7. **`🎞️ PhobosStream Tiled VAE Decoder` (`PhobosStreamVAEDecode`)** → decodes `PHOBOS_LATENT` to `IMAGE` using tiled VAE fallback.
 
 ---
 
