@@ -19,9 +19,9 @@
 
 ### A. NVIDIA CUDA GPU — MiniMax-H3 (33B-Class), Wan2.1 (8 GiB Cap) & 3-Tier `HYBRID_BUDGET` (Tesla T4)
 
-* **`MiniMaxAI/MiniMax-H3` (`32B Qwen3-VL` + `20B` 4-Step Turbo + `4.85 GB` 36-block `ViT3D` Video VAE + `32 kHz` Stereo Audio)** on a **Free `12 GiB` RAM + `14.56 GiB` Tesla T4**: stock ComfyUI `MiniMaxH3VideoVAE` crashes with `CUDA OOM` (`> 14.56 GiB`), while **PhobosStream `TorchBlockStreamer`** decodes all `141` frames (`5.88s @ 24fps`, `736×416`) in **`466.8 MB` Peak CUDA VRAM (`96.8%` saved)** + chunked Stereo Audio VAE in **`618.4 MB`**.
+* **`MiniMaxAI/MiniMax-H3` (`32B Qwen3-VL` + `20B` 4-Step Turbo + `4.85 GB` 36-block `ViT3D` Video VAE + `32 kHz` Stereo Audio)** on a **Free `12 GiB` RAM + `14.56 GiB` Tesla T4**: stock ComfyUI `MiniMaxH3VideoVAE` crashes with `CUDA OOM` (`> 14.56 GiB`), while **PhobosStream `TorchBlockStreamer`** decodes all `141` frames (`5.88s @ 24fps`, `736×416`) in **`466.8 MB` Peak CUDA VRAM (`96.8%` saved, `5m 08s`)** + chunked Stereo Audio VAE in **`618.4 MB` (`8.15 s`)**. Total end-to-end wall time on free 2018 T4 + `12 GiB` RAM: **`25m 32s`** (`74.1s` Stage 1 + `19m 01s` Stage 2 disk-offloaded Turing compute + `5m 08s` Stage 3A + `8.2s` Stage 3B).
 
-* **`Wan-AI/Wan2.1-T2V-1.3B-Diffusers` (~14.5 GB BF16)** under strict **`8.00 GiB` CUDA VRAM cap**: standard `WanPipeline.to("cuda")` crashes with `CUDA out of memory`, while **PhobosStream (`hybrid_budget`)** completes full widescreen **`832×480` × 25-frame (40-step)** photorealistic video generation in just **`3,263.9 MB` (`3.19 GiB`) Peak CUDA VRAM**.
+* **`Wan-AI/Wan2.1-T2V-1.3B-Diffusers` (~14.5 GB BF16)** under strict **`8.00 GiB` CUDA VRAM cap**: standard `WanPipeline.to("cuda")` crashes with `CUDA out of memory`, while **PhobosStream (`hybrid_budget`)** completes full widescreen **`832×480` × 25-frame (40-step)** photorealistic video generation in **`3,263.9 MB` (`3.19 GiB`) Peak CUDA VRAM** (`22m 12s` on Tesla T4).
 * **24-Block FP16 DiT (4 Steps on Tesla T4)**:
   * **`cpu_offload` (Pinned + Async CUDA `record_stream` Prefetch)**: **`322.2 MB` Peak VRAM (`93.0%` saved)** in **`1.074 s`** vs `1.024 s` monolithic (`+4.9%` latency overhead, `0.0` max abs diff).
   * **`hybrid_budget` (`7 GPU + 9 CPU + 8 NVMe`)**: **`994.3 MB` Peak VRAM (`78.4%` saved)** in **`2.418 s`** (`2.34×` faster than pure `mmap_stream`, `0.0` max abs diff).
