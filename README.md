@@ -72,7 +72,9 @@ pip install -r ComfyUI-PhobosStream/requirements.txt
 | **4** | **`PhobosFirstBlockCache`** | `MODEL → MODEL` | Multi-group Zero-DMA Residual Cache (`1.50×–1.94×` faster) with automatic `cond`/`uncond` CFG isolation across `(x)`, `(img, txt)`, and `(vx, ax)` blocks. |
 | **5** | **`PhobosVAEStreamPatcher`** | `VAE → VAE` | Streams heavy 3D/`ViT3D` Video VAEs (`466.8 MB` Peak VRAM) and applies crossfaded chunk decoding to 3D/4D `32 kHz` Stereo Audio VAEs (`259.6 MB`). |
 | **6** | **`PhobosStageOffloadPipeline`** | `→ IMAGE` | All-in-one 3-stage sequential offloader (`Text Encoder → Unload → DiT → Unload → Tiled VAE`). |
-| **7–9** | **`PhobosStreamLoader` / `Sampler` / `VAEDecode`** | Modular | Stage-isolated loader, sampler, and tiled VAE decode nodes (`workflows/minimax_h3_lowvram.json`). |
+| **7–9** | **`PhobosStreamLoader` / `Sampler` / `VAEDecode`** | Modular | Stage-isolated loader, sampler, and tiled VAE decode nodes. |
+
+**Ready-to-Import Workflows (`workflows/`):** [`flux2_32b_zeroram.json`](https://github.com/martianacademy/ComfyUI-PhobosStream/blob/main/workflows/flux2_32b_zeroram.json) · [`ltx25_22b_audiovideo_zeroram.json`](https://github.com/martianacademy/ComfyUI-PhobosStream/blob/main/workflows/ltx25_22b_audiovideo_zeroram.json) · [`wan22_dual14b_zeroram.json`](https://github.com/martianacademy/ComfyUI-PhobosStream/blob/main/workflows/wan22_dual14b_zeroram.json) · [`minimax_h3_lowvram.json`](https://github.com/martianacademy/ComfyUI-PhobosStream/blob/main/workflows/minimax_h3_lowvram.json)
 
 ---
 
