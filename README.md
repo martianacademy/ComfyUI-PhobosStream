@@ -1,6 +1,6 @@
 # <img src="https://raw.githubusercontent.com/martianacademy/ComfyUI-PhobosStream/main/assets/icon.png" width="42" align="top" alt="PhobosStream Icon" /> ComfyUI-PhobosStream
 
-[![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-v0.5.0-EE6A3E)](https://registry.comfy.org/publishers/martianacademy/nodes/comfyui-phobosstream)
+[![Comfy Registry](https://img.shields.io/badge/Comfy_Registry-v1.0.0-EE6A3E)](https://registry.comfy.org/publishers/martianacademy/nodes/comfyui-phobosstream)
 [![PyPI Core](https://img.shields.io/pypi/v/phobos-stream?color=EE6A3E&label=phobos-stream)](https://pypi.org/project/phobos-stream/)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/martianacademy/phobos-stream/blob/main/notebooks/MiniMax_H3_Free_T4_PhobosStream.ipynb)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-Custom_Node-orange.svg)](https://github.com/comfyanonymous/ComfyUI)
@@ -41,6 +41,12 @@
   * Stock `--highvram` & ComfyUI `--lowvram`: ❌ **`CUDA OutOfMemoryError` (`24,534.5 MB` > `24.0 GiB`)**.
   * **`PhobosBlockStreamPatcher` (`cpu_offload`, Lossless):** ✅ **`1,807.1 MB` (`1.76 GiB`) Peak VRAM (`92.8%` less than model size)** in **`12.12 s` (`1.01 s/step`)**, **`0.0` bit-exact (`99.99 dB` PSNR)**.
   * **`PhobosBlockStreamPatcher` + Multi-Group MMDiT FBCache (`0.12` / `0.18`):** ✅ **`1,861.5 MB` Peak VRAM**, **`10.45 s` (`1.16×`, `36.85 dB` PSNR / `0.9950` cos)** and **`7.92 s` (`1.53×`, `28.05 dB` PSNR / `0.9616` cos)**!
+
+* **`v1.0.0` Zero-RAM Loader, CLIP/UMT5 Streamer, On-GPU `.gguf` Block-Streaming & `SageAttention 2.2`:**
+  * **`PhobosZeroRAMLoader` (`25.64 GB` BF16 `HunyuanVideo-13B`, `24 GiB` cap):** Stock `UNETLoader` allocates `25,481.7 MB` CPU heap (`16.07 s`) and crashes with `CUDA OOM`, while **`PhobosZeroRAMLoader (mmap_stream)`** loads in **`0.17 s` (`94.5×` faster)** using **`1,047.3 MB` CPU heap (`95.9%` less RAM)** and **`1,159.5 MB` Peak VRAM** (`54.12 dB` PSNR)!
+  * **`PhobosCLIPStreamPatcher` (`11.37 GB` `UMT5-XXL FP16`):** Cuts Peak VRAM from `11,217.6 MB` (`10.8 GB` stuck after encode) down to **`2,004.0 MB` (`8.1 MB` after encode — `99.9%` freed)** in **`1.63 s` (`1.46×` faster)** with **`0.0` diff**!
+  * **Native On-GPU `.gguf` Zero-RAM Streaming (`29.05 GB` `Wan2.1-T2V-14B`):** `Q8_0` runs **`1.79×` faster (`28.44 s` vs `51.02 s`, `-46.8%` PCIe DMA, `54.19 dB` PSNR)** in **`1,866.0 MB` VRAM**; `Q4_K_S` runs **`2.45×` faster (`20.85 s`, `-70.5%` PCIe DMA, `33.60 dB` PSNR)** in **`2,190.4 MB` VRAM** — directly from `.gguf` without `ComfyUI-GGUF`!
+  * **Compiled `SageAttention 2.2` (`SM80+`):** `1.152×` faster (`88.53 TFLOP/s`, `66.66 dB` PSNR) on `20,280`-token 3D self-attention (`58.92 dB` E2E on `49`-frame `Wan2.1-14B`).
 
 * **`Wan-AI/Wan2.1-T2V-1.3B-Diffusers` (~14.5 GB BF16)** under strict **`8.00 GiB` CUDA VRAM cap**: standard `WanPipeline.to("cuda")` crashes with `CUDA out of memory`, while **PhobosStream (`hybrid_budget`)** completes full widescreen **`832×480` × 25-frame (40-step)** photorealistic video generation in **`3,263.9 MB` (`3.19 GiB`) Peak CUDA VRAM** (`22m 12s` on Tesla T4).
 * **24-Block FP16 DiT (4 Steps on Tesla T4)**:
@@ -97,9 +103,13 @@ pip install -r requirements.txt
 
 ---
 
-## 🧩 Available Nodes (Category: `PhobosStream`)
+## 🧩 Available Nodes (Category: `PhobosStream` — 9 Nodes)
 
-1. **`🚀 Phobos Zero-VRAM 2K/4K & Video Pipeline` (`PhobosStageOffloadPipeline`)**
+1. **`💾 PhobosStream Zero-RAM UNET/DiT Loader` (`PhobosZeroRAMLoader`)**
+   * Instantiates `14 GB–33 GB+` `.safetensors` AND quantized `.gguf` (`Q8_0`, `Q4_0`, `Q4_1`, `Q4_K`, `Q5_K`, `Q6_K`, `BF16`, `F16`) DiTs directly onto `torch.device("meta")` (`0.17 s` load, `< 1.1 GB` CPU heap RAM, `< 2 GB` VRAM) with `mmap_stream` or 3-tier `hybrid_budget` + Zero-DMA TeaCache + `SageAttention 2.2`!
+2. **`📝 PhobosStream CLIP/T5/Qwen Streamer` (`PhobosCLIPStreamPatcher`)**
+   * Drop-in `CLIP -> CLIP` patcher streaming `UMT5-XXL`, `T5-XXL`, `Llama-3`, `Qwen-VL`, and `DualCLIP` encoders block-by-block with a `0 MB`-VRAM CPU giant-vocabulary embedding wrapper (`2.0 GB` Peak VRAM, `8.1 MB` after encode, `0.0` diff).
+3. **`🚀 Phobos Zero-VRAM 2K/4K & Video Pipeline` (`PhobosStageOffloadPipeline`)**
    * All-in-one 3-stage sequential offloader (`Text Encoder -> Unload -> DiT/UNet -> Unload -> Tiled VAE -> Unload`).
    * Supports `clip_name2` (`DualCLIPLoader`), `num_frames` (image & 5D video), `weight_dtype` (`default`, `fp8_e4m3fn`), `block_stream_mode` (`stage_only`, `hybrid_budget`, `cpu_offload`, `mmap_stream`), and `vram_budget_mb` (`0` = auto hardware query).
 2. **`🔌 PhobosStream Block-Streamer (Any MODEL)` (`PhobosBlockStreamPatcher`)**

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "comfyui-phobosstream"
-version = "0.5.0"
-description = "Zero-VRAM Video & Image Diffusion Streaming & 3-Stage Offloading Extension for ComfyUI"
+version = "1.0.0"
+description = "Zero-VRAM & Zero-RAM Video/Image Diffusion, CLIP, VAE & GGUF Streaming Extension for ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
